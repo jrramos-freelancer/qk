@@ -35,7 +35,6 @@ func main() {
 	customCommands = append(customCommands, work.GetWorkCommands()...)
 
 	ret := internal.Qk(args, customCommands, debug)
-	// ret = strings.ReplaceAll(ret, " ", "_")
 	if ret != "" {
 		if *debug {
 			fmt.Println("\nGenerated Command:")

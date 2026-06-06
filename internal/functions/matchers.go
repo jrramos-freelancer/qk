@@ -9,8 +9,6 @@ import (
 )
 
 func restoreFlagDashes(name string) string {
-	// fmt.Printf("Restoring dashes for flag name: %q\n", name)
-	// check for two-or-more leading underscores first so "__name" -> "--name"
 	dunderUnderscoreRegex := regexp.MustCompile(`^_{2,}`)
 	underscoreRegex := regexp.MustCompile(`^_{1}`)
 	if dunderUnderscoreRegex.MatchString(name) {
@@ -28,13 +26,10 @@ func findUnchangedNameSubmatches(sourceString string, regex *regexp.Regexp) map[
 
 func findNameSubmatches(sourceString string, regex *regexp.Regexp, nameTransform func(string) string) map[string]string {
 	matches := make(map[string]string)
-	//fmt.Println("Finding submatches for regex:", regex.String(), "in source string: \"", sourceString, "\"")
 	submatches := regex.FindStringSubmatch(sourceString)
-	//fmt.Println("submatches", submatches)
 	if submatches != nil {
 		for i, name := range regex.SubexpNames() {
 			if i != 0 && name != "" {
-				//fmt.Println("matches[" + nameTransform(name) + "] = " + submatches[i])
 				matches[nameTransform(name)] = submatches[i]
 			}
 		}
