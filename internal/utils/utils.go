@@ -2,6 +2,7 @@ package utils
 
 import (
 	"strings"
+	"testing"
 )
 
 func MultilineCommand(commands []string) string {
@@ -13,4 +14,10 @@ func MultilineCommand(commands []string) string {
 		}
 	}
 	return commandString.String()
+}
+
+func AssertEqual(t *testing.T, expected, actual string) {
+	if expected != actual {
+		t.Errorf("Expected '%s', got '%s'", expected, actual)
+	}
 }

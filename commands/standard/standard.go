@@ -1,4 +1,4 @@
-package commands
+package standard
 
 import (
 	"qk/internal/functions"
@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func GetDefaultCommands() []definitions.CustomCommand {
+func GetStandardCommands() []definitions.CustomCommand {
 	return []definitions.CustomCommand{
 		// ZSH Management Commands
 		*constructors.NewCustomCommand(
@@ -63,4 +63,8 @@ func GetDefaultCommands() []definitions.CustomCommand {
 			},
 		),
 	}
+}
+
+func git_pullout(command []string, matches map[string]string) string {
+	return "git pull && git checkout -b " + matches["branch_name"]
 }

@@ -2,6 +2,9 @@ package commands
 
 import (
 	"os"
+	"qk/commands/standard"
+	"qk/commands/user"
+	"qk/commands/work"
 	"qk/internal/types/definitions"
 	"testing"
 )
@@ -9,15 +12,9 @@ import (
 var commands []definitions.CustomCommand
 
 func TestMain(m *testing.M) {
-	commands = append(commands, GetDefaultCommands()...)
-	commands = append(commands, GetUserCommands()...)
-	commands = append(commands, GetWorkCommands()...)
+	commands = append(commands, standard.GetStandardCommands()...)
+	commands = append(commands, user.GetUserCommands()...)
+	commands = append(commands, work.GetWorkCommands()...)
 	exitCode := m.Run()
 	os.Exit(exitCode)
-}
-
-func assertEqual(t *testing.T, expected, actual string) {
-	if expected != actual {
-		t.Errorf("Expected '%s', got '%s'", expected, actual)
-	}
 }

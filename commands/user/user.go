@@ -1,4 +1,4 @@
-package commands
+package user
 
 import (
 	"qk/internal/functions"

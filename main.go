@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"qk/commands"
+	"qk/commands/standard"
+	"qk/commands/user"
+	"qk/commands/work"
 	"qk/internal"
 	"qk/internal/types/definitions"
 	"slices"
@@ -28,9 +30,9 @@ func main() {
 	}
 
 	var customCommands []definitions.CustomCommand
-	customCommands = append(customCommands, commands.GetDefaultCommands()...)
-	customCommands = append(customCommands, commands.GetUserCommands()...)
-	customCommands = append(customCommands, commands.GetWorkCommands()...)
+	customCommands = append(customCommands, standard.GetStandardCommands()...)
+	customCommands = append(customCommands, user.GetUserCommands()...)
+	customCommands = append(customCommands, work.GetWorkCommands()...)
 
 	ret := internal.Qk(args, customCommands, debug)
 	// ret = strings.ReplaceAll(ret, " ", "_")
