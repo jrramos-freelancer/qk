@@ -1,6 +1,6 @@
 # qk
 
-`qk` is a slightly more capable command alias tool — built to allow for more a readable and maintainable way of defining aliases, **order-agnostic flags**, and improve reliability with an actual test suite.
+`qk` (/kwɪk/) is a slightly more capable command alias tool — built to allow for more a readable and maintainable way of defining aliases, **order-agnostic flags**, and improve reliability with an actual test suite.
 
 Unlike a shell alias or a single rigid regex, qk lets you type declared flags in any order (`qk diff --update --draft D123` and `qk diff --draft --update D123` both work). See [Order-agnostic flags](#order-agnostic-flags).
 
