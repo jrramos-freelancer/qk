@@ -1,0 +1,24 @@
+flowchart TD
+    P["Command parts: aws, s3, cp, bulk flag, source, destination"]
+    P --> CAT[categorizeParts]
+
+    CAT --> K1["keyword aws"]
+    CAT --> K2["keyword s3"]
+    CAT --> K3["keyword cp"]
+    CAT --> F1["flag bulk"]
+    CAT --> CG1["capture group source"]
+    CAT --> CG2["capture group destination"]
+
+    K1 --> BCR[buildCommandRegex]
+    K2 --> BCR
+    K3 --> BCR
+    CG1 --> BCR
+    CG2 --> BCR
+    F1 --> BFR[buildFlagRegexes]
+
+    BCR --> CR["CommandRegex for full input"]
+    BFR --> FR["FlagRegexes keyed by cp"]
+
+    CR --> CC[CustomCommand]
+    FR --> CC
+    CB["Callback func"] --> CC

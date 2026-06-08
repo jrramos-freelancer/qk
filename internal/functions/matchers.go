@@ -8,6 +8,9 @@ import (
 	"strings"
 )
 
+// restoreFlagDashes converts underscore-prefixed capture group names back to
+// shell flag syntax, for example "_bulk" becomes "-bulk" and "__force" becomes
+// "--force".
 func restoreFlagDashes(name string) string {
 	dunderUnderscoreRegex := regexp.MustCompile(`^_{2,}`)
 	underscoreRegex := regexp.MustCompile(`^_{1}`)
@@ -20,11 +23,11 @@ func restoreFlagDashes(name string) string {
 	return name
 }
 
-func findUnchangedNameSubmatches(sourceString string, regex *regexp.Regexp) map[string]string {
-	return findNameSubmatches(sourceString, regex, func(name string) string { return name })
+func findNamedMatches(input string, commandRegex *regexp.Regexp) map[string]string {
+	return findAndTransformNamedMatches(input, commandRegex, func(name string) string { return name })
 }
 
-func findNameSubmatches(sourceString string, regex *regexp.Regexp, nameTransform func(string) string) map[string]string {
+func findAndTransformNamedMatches(sourceString string, regex *regexp.Regexp, nameTransform func(string) string) map[string]string {
 	matches := make(map[string]string)
 	submatches := regex.FindStringSubmatch(sourceString)
 	if submatches != nil {
@@ -39,16 +42,23 @@ func findNameSubmatches(sourceString string, regex *regexp.Regexp, nameTransform
 
 func ExtractMatches(argsString string, command definitions.CustomCommand, debug *bool) map[string]string {
 	matches := make(map[string]string)
-	maps.Copy(matches, findUnchangedNameSubmatches(argsString, command.CommandRegex))
+
+	// Extract named matches from the command regex
+	maps.Copy(matches, findNamedMatches(argsString, command.CommandRegex))
+
+	// Parse flags out of each keyword's suffix. Each flag regex runs against the
+	// remaining suffix text; matches are merged into matches and then stripped
+	// from the keyword value.
 	for keyword, flagRegexes := range command.FlagRegexes {
 		for _, flagRegex := range flagRegexes {
-			flagSubmatches := findNameSubmatches(matches[keyword], flagRegex, restoreFlagDashes)
+			flagSubmatches := findAndTransformNamedMatches(matches[keyword], flagRegex, restoreFlagDashes)
 			maps.Copy(matches, flagSubmatches)
 			for _, value := range flagSubmatches {
 				matches[keyword] = strings.Replace(matches[keyword], value, "", 1)
 			}
 		}
 	}
+
 	if *debug {
 		fmt.Print("Extracted matches: { ")
 		for k, v := range matches {
@@ -59,6 +69,7 @@ func ExtractMatches(argsString string, command definitions.CustomCommand, debug 
 	return matches
 }
 
+// MatchCommand returns whether argsString matches a command's regex
 func MatchCommand(argsString string, command definitions.CustomCommand, debug *bool) bool {
 	if *debug {
 		fmt.Println("Checking command regex:", command.CommandRegex.String())

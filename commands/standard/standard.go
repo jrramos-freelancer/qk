@@ -1,9 +1,9 @@
 package standard
 
 import (
-	"qk/internal/functions"
 	"qk/internal/types/constructors"
 	"qk/internal/types/definitions"
+	"qk/internal/utils"
 	"strings"
 )
 
@@ -40,7 +40,7 @@ func GetStandardCommands() []definitions.CustomCommand {
 		*constructors.NewCustomCommand(
 			[]string{"git", "log"},
 			func(command []string, matches map[string]string) string {
-				return functions.AutoBuildCommandString(command, matches) +
+				return utils.AutoBuildCommandString(command, matches) +
 					"--graph --abbrev-commit --decorate " +
 					"--format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(auto)%d%C(reset)'"
 			},

@@ -1,3 +1,0 @@
-- [ ] Add a lint rule for checking if a function or command has a unit test
-- [ ] Add unit tests for simple commands by using raw string outputs
-- [ ] Rewrite qk diff
