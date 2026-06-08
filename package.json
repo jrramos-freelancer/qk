@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "scripts": {
+    "postinstall": "puppeteer browsers install chrome-headless-shell",
+    "diagrams": "npm run diagrams:build",
+    "diagrams:build": "mmdc -i docs/diagrams/how-it-works.mmd -o docs/diagrams/how-it-works.svg && mmdc -i docs/diagrams/command-definition.mmd -o docs/diagrams/command-definition.svg && mmdc -i docs/diagrams/matching-extraction.mmd -o docs/diagrams/matching-extraction.svg"
+  },
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^11.15.0"
+  }
+}

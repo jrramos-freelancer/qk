@@ -1,0 +1,16 @@
+flowchart TD
+    IN["Input: aws s3 cp with bulk flag and paths"]
+
+    IN --> MC{"MatchCommand"}
+
+    MC -->|no match| NEXT[Try next command]
+    MC -->|match| EM[ExtractMatches]
+
+    EM --> PASS1["Pass 1: findNamedMatches on full input"]
+    PASS1 --> M1["matches: cp suffix, source, destination"]
+
+    M1 --> PASS2["Pass 2: flag regexes per keyword"]
+    PASS2 --> M2["Promote bulk flag into matches and strip from cp suffix"]
+
+    M2 --> CB[Callback]
+    CB --> OUT["Generated shell command"]

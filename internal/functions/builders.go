@@ -6,18 +6,24 @@ import (
 	"strings"
 )
 
+// isFlag returns whether part looks like a shell flag or a templated flag
+// placeholder such as "<profile>-foo".
 func isFlag(part string) bool {
 	return regexp.MustCompile(`^(?:\<\S+\>)?(?:-\w+|--\S+)$`).MatchString(part)
 }
 
+// isKeyword returns whether part is a literal command keyword.
 func isKeyword(part string) bool {
 	return regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`).MatchString(part)
 }
 
+// isCaptureGroup returns whether part is a raw regex capture group.
 func isCaptureGroup(part string) bool {
 	return regexp.MustCompile(`^\(.*\)$`).MatchString(part)
 }
 
+// PartCategory identifies how a command part should be interpreted when
+// building regexes.
 type PartCategory string
 
 const (
@@ -26,11 +32,14 @@ const (
 	CaptureGroup PartCategory = "capture_group"
 )
 
+// CategorizedPart pairs a command token with its interpreted category.
 type CategorizedPart struct {
 	Type  PartCategory
 	Value string
 }
 
+// categorizeParts splits command tokens into keyword, flag, and capture group
+// categories used by the regex builders.
 func categorizeParts(parts []string) []CategorizedPart {
 	var categorizedParts []CategorizedPart
 	for _, part := range parts {
@@ -46,10 +55,13 @@ func categorizeParts(parts []string) []CategorizedPart {
 	return categorizedParts
 }
 
+// normalizedCaptureGroupName converts a flag or keyword token into a valid Go
+// named capture group prefix e.g."--flag" becomes "?P<__flag>"
 func normalizedCaptureGroupName(part string) string {
 	return "?P<" + strings.ReplaceAll(part, "-", "_") + ">"
 }
 
+// buildCommandRegex builds the regex to be used for matching a command
 func buildCommandRegex(categorizedParts []CategorizedPart) *regexp.Regexp {
 	regex := []string{"^"}
 	for i, part := range categorizedParts {
@@ -73,6 +85,8 @@ func buildCommandRegex(categorizedParts []CategorizedPart) *regexp.Regexp {
 	return regexp.MustCompile(strings.Join(regex, ""))
 }
 
+// getFlag extracts the flag from a command part
+// e.g. passing "--flag (?P<flag_value>.+)" returns "--flag"
 func getFlag(part string) (string, error) {
 	flagRegex := regexp.MustCompile(`^-{1,2}\w+`)
 	if match := flagRegex.FindString(part); match != "" {
@@ -81,6 +95,8 @@ func getFlag(part string) (string, error) {
 	return "", fmt.Errorf("no flag found in part: %s", part)
 }
 
+// buildFlagRegexes builds per-keyword regexes for flags declared after a
+// keyword in the command definition.
 func buildFlagRegexes(categorizedParts []CategorizedPart) map[string][]*regexp.Regexp {
 	flagRegexes := make(map[string][]*regexp.Regexp)
 	var currentKeyword string
@@ -101,36 +117,12 @@ func buildFlagRegexes(categorizedParts []CategorizedPart) map[string][]*regexp.R
 	return flagRegexes
 }
 
+// BuildCommandRegex builds the regex to be used for matching a command and
+// the regexes to be used for matching flags for each keyword
 func BuildCommandRegex(commandParts []string) (*regexp.Regexp, map[string][]*regexp.Regexp) {
 	categorizedParts := categorizeParts(commandParts)
 	commandRegex := buildCommandRegex(categorizedParts)
 	flagRegexes := buildFlagRegexes(categorizedParts)
 
 	return commandRegex, flagRegexes
-}
-
-func AutoBuildCommandString(command []string, matches map[string]string) string {
-	var commandString strings.Builder
-	for i, part := range command {
-		if match, ok := matches[part]; ok {
-			commandString.WriteString(part + match)
-			if i <= len(command)-1 {
-				commandString.WriteString(" ")
-			}
-		}
-	}
-
-	return normalizeSpaces(commandString.String())
-}
-
-func BuildCommandString(command []string) string {
-	var commandString strings.Builder
-	for i, part := range command {
-		commandString.WriteString(part)
-		if i <= len(command)-2 {
-			commandString.WriteString(" ")
-		}
-	}
-
-	return normalizeSpaces(commandString.String())
 }

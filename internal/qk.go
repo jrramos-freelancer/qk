@@ -1,3 +1,5 @@
+// Package internal resolves user input against registered custom commands and
+// returns the shell command string produced by the first matching callback.
 package internal
 
 import (
@@ -7,6 +9,9 @@ import (
 	"strings"
 )
 
+// Qk matches args against customCommands in order and returns the shell command
+// string from the first matching callback. It returns an empty string when no
+// command matches.
 func Qk(args []string, customCommands []definitions.CustomCommand, debug *bool) string {
 	argsString := strings.Join(args, " ")
 	if *debug {

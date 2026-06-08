@@ -1,0 +1,27 @@
+flowchart TD
+    subgraph define ["1. (Before usage) Define"]
+        direction TB
+        ENTRY["Add a NewCustomCommand entry\nwith command parts and a callback"]
+        REG["BuildCommandRegex compiles those parts\ninto a CommandRegex and FlagRegexes"]
+        ENTRY --> REG
+    end
+
+    subgraph match ["2. (On usage) Match"]
+        direction TB
+        IN["The shell wrapper sends your args\nto qk as a single string"]
+        LOOP{"internal.Qk tries each entry\nuntil MatchCommand finds a match"}
+        EM["ExtractMatches parses your input\ninto a matches map"]
+        IN --> LOOP
+        LOOP -->|no match| ERR["qk exits with an error"]
+        LOOP -->|match| EM
+    end
+
+    subgraph build ["3. Build"]
+        direction TB
+        CB["The callback turns matches\ninto the final shell command"]
+        OUT["qk prints the command\nand the wrapper runs it"]
+        CB --> OUT
+    end
+
+    REG -.->|main.go loads command definitions| IN
+    EM --> CB
