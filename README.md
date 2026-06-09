@@ -1,6 +1,6 @@
 # qk
 
-`qk` (/kwɪk/) is a slightly more capable command alias tool — built to allow for more a readable and maintainable way of defining aliases, **order-agnostic flags**, and improve reliability with an actual test suite.
+`qk` (/kwɪk/) is a slightly more capable command alias tool — built for a more readable and maintainable way of defining aliases, **order-agnostic flags**, and improved reliability with an actual test suite.
 
 Unlike a shell alias or a single rigid regex, qk lets you type declared flags in any order (`qk diff --update --draft D123` and `qk diff --draft --update D123` both work). See [Order-agnostic flags](#order-agnostic-flags).
 
@@ -23,7 +23,9 @@ Other useful targets:
 ```bash
 make build      # run tests and compile
 make test       # run tests only
+make install    # build and install shell wrappers
 make uninstall  # remove the qk wrappers from ~/.zshrc and ~/.bashrc
+make diagrams   # regenerate README SVGs from docs/diagrams/*.mmd
 make clean      # delete the built binary
 ```
 
@@ -113,17 +115,18 @@ A command is declared with `NewCustomCommand`:
 Each token in the slice is categorized automatically:
 
 
-| Token shape        | Category      | Role                                                                     |
-| -------------------- | --------------- | -------------------------------------------------------------------------- |
-| `git`, `log`, `cp` | keyword       | Matched literally; captures everything after it in the input             |
-| `--bulk`, `-a`     | flag          | Parsed separately after match —**not** fixed-order in the command regex |
-| `(?P<source>\S+)`  | capture group | Inserted directly into the command regex                                 |
+| Token shape                      | Category      | Role                                                                     |
+| ---------------------------------- | --------------- | -------------------------------------------------------------------------- |
+| `git`, `log`, `cp`               | keyword       | Matched literally; captures everything after it in the input             |
+| `--bulk`, `-a`                   | flag          | Parsed separately after match —**not** fixed-order in the command regex |
+| `--update (?P<args>D\d+)`         | flag + arg    | Flag with an inline capture group for its argument; parsed in pass 2     |
+| `(?P<source>\S+)`                | capture group | Inserted directly into the command regex                                 |
 
 ![Command definition](docs/diagrams/command-definition.svg)
 
 Source: [`docs/diagrams/command-definition.mmd`](docs/diagrams/command-definition.mmd).
 
-Flags are associated with the **most recent keyword** before them in the definition. In the example above, `--bulk` is linked to `cp`.
+Flags are associated with the **most recent keyword** before them in the definition. In the example above, `--bulk` is linked to `cp`. A flag token can also include an inline capture group (e.g. `` `--update (?P<args>D\d+)` ``) when the argument should stay tied to that flag during pass 2.
 
 Go regex capture names cannot contain `-`, so flag groups use underscores internally (`__bulk`) and are converted back to `--bulk` during extraction via `restoreFlagDashes`.
 
@@ -152,9 +155,9 @@ At this point flags are still embedded inside keyword suffixes. Pass 1 does not 
 
 For each keyword that has declared flags, `buildFlagRegexes` has registered a **separate regex per flag**. `ExtractMatches` runs each one against that keyword's suffix independently:
 
-1. Search the suffix for one flag (e.g. `--draft`) anywhere in the remaining text
-2. Add it to `matches` under its flag name (e.g. `matches["--draft"]`)
-3. Remove the matched flag text from the suffix and move on to the next flag regex
+1. Search the suffix for one flag (e.g. `--draft`, or `--update D123` when the definition uses `` `--update (?P<args>D\d+)` ``) anywhere in the remaining text
+2. Add captures to `matches` — flag names like `matches["--draft"]`, plus any nested groups such as `matches["args"]`
+3. Remove the matched text from the suffix and move on to the next flag regex
 
 Because each flag is found on its own, the user can reorder them freely. The definition lists which flags exist and which keyword they belong to — not the order the user must type them in.
 
@@ -168,23 +171,23 @@ This is the core reason qk handles flags differently from a plain alias or one b
 
 1. **Define** — `BuildCommandRegex` builds `CommandRegex` without flags, and `buildFlagRegexes` attaches one regex per declared flag to the preceding keyword.
 2. **Match (pass 1)** — `CommandRegex` matches the skeleton of the command (keywords + positional captures). Flags in the input are absorbed into keyword suffix text but do not affect whether the entry matches.
-3. **Match (pass 2)** — each flag regex scans the suffix for its flag by name. `--draft` and `--update` are looked up independently, so either order works.
-4. **Build** — your callback reads `matches["--draft"]`, `matches["--update"]`, etc., and decides what shell command to run.
+3. **Match (pass 2)** — each flag regex scans the suffix for its flag by name. `--draft` and `--update` (with its `D123` argument) are looked up independently, so either order works.
+4. **Build** — your callback reads `matches["--draft"]`, `matches["args"]`, etc., and decides what shell command to run.
 
 Example entry:
 
 ```go
-[]string{"diff", "--draft", "--update", `(?P<args>D\d+)`}
+[]string{"diff", "--draft", `--update (?P<args>D\d+)`}
 ```
 
 Both of these match the same way:
 
 ```bash
 qk diff --draft --update D123
-qk diff --update --draft D123
+qk diff --update D123 --draft
 ```
 
-Optional flags still work: if the user omits `--draft`, `matches["--draft"]` is empty and your callback can branch on that.
+`--update` and its `D123` argument are parsed together from the `diff` suffix, so `matches["args"]` is `"D123"`. Optional flags still work: if the user omits `--draft`, `matches["--draft"]` is empty and your callback can branch on that.
 
 **Limits worth knowing:**
 
@@ -273,21 +276,27 @@ List each flag after the keyword. The definition order only controls how `buildF
 
 ```go
 *constructors.NewCustomCommand(
-    []string{"diff", "--draft", "--update", `(?P<args>D\d+)`},
+    []string{"diff", "--draft", `--update (?P<args>D\d+)`},
     func(command []string, matches map[string]string) string {
-        if matches["--draft"] != "" {
-            return utils.BuildCommandString([]string{
-                "arc", "diff", "--skip-staging", matches["diff"], matches["--draft"], matches["args"],
-            })
+        parts := []string{"arc", "diff", "--skip-staging"}
+        if matches["--draft"] == "" {
+            parts = []string{"arc", "diff", "--only", "--skip-staging"}
+        } else {
+            parts = append(parts, matches["--draft"])
         }
-        return utils.BuildCommandString([]string{
-            "arc", "diff", "--only", "--skip-staging", matches["diff"], matches["--update"], matches["args"],
-        })
+        if matches["args"] != "" {
+            parts = append(parts, "--update", matches["args"])
+        }
+        return utils.BuildCommandString(parts)
     },
 ),
 ```
 
-Both `qk diff --draft --update D123` and `qk diff --update --draft D123` can match; use empty-string checks for optional flags.
+Both `qk diff --draft --update D123` and `qk diff --update D123 --draft` match; use empty-string checks for optional flags.
+
+**Flags with arguments**
+
+A flag token can include a capture group for its value: `` `--update (?P<args>D\d+)` ``. Pass 2 treats the flag and argument as one match on the keyword suffix, then exposes the inner capture in `matches["args"]`. This keeps positional diff IDs out of the top-level `CommandRegex` while still binding them to `--update`.
 
 **Flags with user-typed arguments**
 
@@ -338,8 +347,7 @@ qk/
 │   ├── standard/           # shared commands
 │   ├── user/               # personal commands
 │   └── work/               # local/work commands (gitignored)
-|                           # use your own /work repository
-|                           # to minimize sharing sensitive company details
+│                           # see commands/work/README.md
 ├── internal/
 │   ├── qk.go               # main matching loop
 │   ├── functions/          # regex builders and matchers

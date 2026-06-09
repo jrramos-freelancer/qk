@@ -129,6 +129,23 @@ func TestBuildFlagRegexes(t *testing.T) {
 				"cp": {`(?P<__bulk>--bulk)`},
 			},
 		},
+		{
+			name:         "flag with argument capture group",
+			parts:        []string{"diff", "--draft", "--update (?P<args>D\\d+)"},
+			wantKeywords: []string{"diff"},
+			wantCounts:   map[string]int{"diff": 2},
+			wantPatterns: map[string][]string{
+				"diff": {
+					`(?P<__draft>--draft)`,
+					`(?P<__update>--update (?P<args>D\d+))`,
+				},
+			},
+			matchCases: map[string]map[string]string{
+				"diff": {
+					"__update": "--update D123",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -213,4 +230,68 @@ func sortedKeys(flagRegexes map[string][]*regexp.Regexp) []string {
 	}
 	slices.Sort(keys)
 	return keys
+}
+
+func TestIsFlag(t *testing.T) {
+	tests := []struct {
+		part string
+		want bool
+	}{
+		{part: "--bulk", want: true},
+		{part: "-a", want: true},
+		{part: "--update (?P<args>D\\d+)", want: true},
+		{part: "(?P<args>D\\d+)", want: false},
+		{part: "diff", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.part, func(t *testing.T) {
+			if got := isFlag(tt.part); got != tt.want {
+				t.Fatalf("isFlag(%q) = %v, want %v", tt.part, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBuildCommandRegex(t *testing.T) {
+	tests := []struct {
+		name    string
+		parts   []string
+		input   string
+		want    string
+		noMatch string
+	}{
+		{
+			name:  "keyword followed by flags only",
+			parts: []string{"diff", "--draft", "--update (?P<args>D\\d+)"},
+			input: "diff --update D123",
+			want:  "^diff(?P<diff>.*)$",
+		},
+		{
+			name:  "keyword with trailing flags does not require trailing space",
+			parts: []string{"diff", "--draft", "--update (?P<args>D\\d+)"},
+			input: "diff",
+		},
+		{
+			name:  "keyword followed by capture group skips flags for spacing",
+			parts: []string{"patch", "-b", "(?P<diff>D\\d+)"},
+			input: "patch -b D123",
+			want:  "^patch(?P<patch>.*) (?P<diff>D\\d+)$",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			commandRegex, _ := BuildCommandRegex(tt.parts)
+			if tt.want != "" && commandRegex.String() != tt.want {
+				t.Fatalf("expected regex %q, got %q", tt.want, commandRegex.String())
+			}
+			if tt.input != "" && !commandRegex.MatchString(tt.input) {
+				t.Fatalf("expected %q to match %q", tt.input, commandRegex.String())
+			}
+			if tt.noMatch != "" && commandRegex.MatchString(tt.noMatch) {
+				t.Fatalf("expected %q not to match %q", tt.noMatch, commandRegex.String())
+			}
+		})
+	}
 }

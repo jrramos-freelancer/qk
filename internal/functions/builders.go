@@ -7,9 +7,13 @@ import (
 )
 
 // isFlag returns whether part looks like a shell flag or a templated flag
-// placeholder such as "<profile>-foo".
+// placeholder such as "<profile>-foo", optionally followed by an argument
+// capture group such as "--update (?P<args>D\d+)".
 func isFlag(part string) bool {
-	return regexp.MustCompile(`^(?:\<\S+\>)?(?:-\w+|--\S+)$`).MatchString(part)
+	if regexp.MustCompile(`^(?:\<\S+\>)?(?:-\w+|--\S+)$`).MatchString(part) {
+		return true
+	}
+	return regexp.MustCompile(`^(?:\<\S+\>)?(?:-\w+|--\S+) \(.+\)$`).MatchString(part)
 }
 
 // isKeyword returns whether part is a literal command keyword.
@@ -61,6 +65,17 @@ func normalizedCaptureGroupName(part string) string {
 	return "?P<" + strings.ReplaceAll(part, "-", "_") + ">"
 }
 
+// hasRegexPartAfter reports whether a keyword or capture group appears after
+// index i, skipping flags which are omitted from the command regex.
+func hasRegexPartAfter(categorizedParts []CategorizedPart, i int) bool {
+	for j := i + 1; j < len(categorizedParts); j++ {
+		if categorizedParts[j].Type != Flag {
+			return true
+		}
+	}
+	return false
+}
+
 // buildCommandRegex builds the regex to be used for matching a command
 func buildCommandRegex(categorizedParts []CategorizedPart) *regexp.Regexp {
 	regex := []string{"^"}
@@ -69,14 +84,14 @@ func buildCommandRegex(categorizedParts []CategorizedPart) *regexp.Regexp {
 		case Keyword:
 			regex = append(regex, part.Value)
 			regex = append(regex, "("+normalizedCaptureGroupName(part.Value)+".*)")
-			if i < len(categorizedParts)-1 {
+			if hasRegexPartAfter(categorizedParts, i) {
 				regex = append(regex, " ")
 			}
 		case Flag:
 			continue // Flags are not used when matching the command
 		case CaptureGroup:
 			regex = append(regex, part.Value)
-			if i < len(categorizedParts)-1 {
+			if hasRegexPartAfter(categorizedParts, i) {
 				regex = append(regex, " ")
 			}
 		}
