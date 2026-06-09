@@ -37,6 +37,49 @@ qk --debug git log --all   # print match details without running
 
 In normal mode, it prints the generated command and executes it. In debug mode it only prints the output.
 
+## Available commands
+
+Built-in commands from `commands/standard` and `commands/user`. Work-specific commands live in `commands/work` — see [`commands/work/README.md`](commands/work/README.md).
+
+### ZSH Management
+
+
+| Command     | Description                             |
+| ------------- | ----------------------------------------- |
+| `qk reload` | Reload shell config (`source ~/.zshrc`) |
+
+### AWS
+
+
+| Command                               | Description                                                                                               |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `qk aws s3 cp --bulk <source> <dest>` | Copy all S3 files with a certain prefix e.g. qk aws s3 cp s3://my-example-bucket/logs/2026-03 ./2026-logs |
+
+### Git
+
+
+| Command                   | Description                                            |
+| --------------------------- | -------------------------------------------------------- |
+| `qk git log [flags...]`   | `git log` that's a bit easier to read                  |
+| `qk git pullout <branch>` | `git pull` then create and checkout a new branch       |
+| `qk git undo`             | Soft-reset the last commit (`git reset --soft HEAD~1`) |
+| `qk git bump`             | Create an empty commit and push to `origin HEAD`       |
+
+### Notes
+
+
+| Command        | Description                                                        |
+| ---------------- | -------------------------------------------------------------------- |
+| `qk note`      | Open today's day-log note, then commit and push                    |
+| `qk note -<n>` | Open the*n*th most recent note (e.g. `qk note -1` for yesterday's) |
+
+### VSCode
+
+
+| Command    | Description                          |
+| ------------ | -------------------------------------- |
+| `qk code`  | Run`code .` in the current directory |
+
 ## How it works
 
 Three stages: **define** a `NewCustomCommand` entry, **match** user input against it, **build** and run the resulting shell command.
